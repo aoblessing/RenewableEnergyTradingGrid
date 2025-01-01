@@ -1,15 +1,8 @@
+;; Energy Credit Token Contract
+;; Handles the creation, transfer, and management of renewable energy credits
 
-;; energy-credit
-;; <add a description here>
-
-;; constants
-;;
-
-;; data maps and vars
-;;
-
-;; private functions
-;;
-
-;; public functions
-;;
+;; Constants
+(define-constant CONTRACT-OWNER tx-sender)
+(define-constant ERR-NOT-AUTHORIZED (err u101))
+(define-constant ERR-INVALID-AMOUNT (err u102))
+(define-constant ERR-INSUFFICIENT-BALANCE (err u103))
