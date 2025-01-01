@@ -38,3 +38,61 @@
         (ok (map-set energy-providers provider true))
     )
 )
+
+;; Credit Minting
+(define-public (mint-credits (amount uint) (energy-type (string-ascii 20)) (grid-location (string-ascii 50)))
+    (let 
+        (
+            (provider tx-sender)
+            (current-total (var-get total-credits))
+            (new-total (+ current-total amount))
+        )
+        (asserts! (map-get? energy-providers provider) ERR-NOT-AUTHORIZED)
+        (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+
+        ;; Update total supply
+        (var-set total-credits new-total)
+
+        ;; Update provider balance
+        (map-set credit-balances 
+            provider 
+            (+ (default-to u0 (map-get? credit-balances provider)) amount)
+        )
+
+        ;; Store metadata
+        (map-set credit-metadata current-total
+            {
+                producer: provider,
+                energy-type: energy-type,
+                timestamp: block-height,
+                amount: amount,
+                grid-location: grid-location
+            }
+        )
+
+        (ok true)
+    )
+)
+
+;; Credit Transfer
+(define-public (transfer-credits (amount uint) (sender principal) (recipient principal))
+    (let
+        (
+            (sender-balance (default-to u0 (map-get? credit-balances sender)))
+        )
+        (asserts! (or (is-eq tx-sender sender) (is-contract-owner)) ERR-NOT-AUTHORIZED)
+        (asserts! (>= sender-balance amount) ERR-INSUFFICIENT-BALANCE)
+
+        ;; Update balances
+        (map-set credit-balances
+            sender
+            (- sender-balance amount)
+        )
+        (map-set credit-balances
+            recipient
+            (+ (default-to u0 (map-get? credit-balances recipient)) amount)
+        )
+
+        (ok true)
+    )
+)
