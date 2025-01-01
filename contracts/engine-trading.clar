@@ -11,6 +11,7 @@
 (define-constant ERR-INSUFFICIENT-BALANCE (err u206))
 (define-constant ERR-SAME-GRID-REQUIRED (err u207))
 (define-constant ERR-INVALID-ORDER-STATUS (err u208))
+(define-constant ERR-TRANSFER-FAILED (err u209))
 
 ;; Order Status Types
 (define-constant STATUS-OPEN "open")
@@ -23,7 +24,6 @@
 
 ;; Contract Variables
 (define-data-var next-order-id uint u0)
-(define-data-var energy-credit-contract principal 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.energy-credit)
 
 ;; Order Structure
 (define-map orders
@@ -62,6 +62,26 @@
     )
 )
 
+(define-private (update-order-status (order-id uint) (order-data { maker: principal, order-type: (string-ascii 4), amount: uint, price-per-unit: uint, grid-location: (string-ascii 50), status: (string-ascii 10), created-at: uint, filled-at: (optional uint) }))
+    (begin
+        (map-set orders order-id
+            (merge order-data 
+                {
+                    status: STATUS-FILLED,
+                    filled-at: (some block-height)
+                }
+            )
+        )
+        (map-set grid-prices (get grid-location order-data)
+            {
+                last-price: (get price-per-unit order-data),
+                updated-at: block-height
+            }
+        )
+        order-id
+    )
+)
+
 ;; Order Management
 (define-public (create-sell-order (amount uint) (price-per-unit uint) (grid-location (string-ascii 50)))
     (let
@@ -71,7 +91,7 @@
         ;; Validate order parameters
         (asserts! (> amount u0) ERR-INVALID-AMOUNT)
         (asserts! (> price-per-unit u0) ERR-INVALID-PRICE)
-
+        
         ;; Create the order
         (map-set orders order-id
             {
@@ -85,7 +105,7 @@
                 filled-at: none
             }
         )
-
+        
         ;; Return the order ID
         (ok order-id)
     )
@@ -99,7 +119,7 @@
         ;; Validate order parameters
         (asserts! (> amount u0) ERR-INVALID-AMOUNT)
         (asserts! (> price-per-unit u0) ERR-INVALID-PRICE)
-
+        
         ;; Create the order
         (map-set orders order-id
             {
@@ -113,7 +133,7 @@
                 filled-at: none
             }
         )
-
+        
         ;; Return the order ID
         (ok order-id)
     )
@@ -127,13 +147,13 @@
         ;; Verify ownership and status
         (asserts! (is-eq (get maker order) tx-sender) ERR-NOT-AUTHORIZED)
         (asserts! (is-eq (get status order) STATUS-OPEN) ERR-INVALID-ORDER-STATUS)
-
+        
         ;; Update order status
         (map-set orders order-id
             (merge order { status: STATUS-CANCELLED })
         )
-
-        (ok true)
+        
+        (ok order-id)
     )
 )
 
@@ -141,46 +161,20 @@
     (let
         (
             (order (unwrap! (map-get? orders order-id) ERR-ORDER-NOT-FOUND))
-            (energy-contract (contract-call? (var-get energy-credit-contract) transfer))
         )
         ;; Validate order status
         (asserts! (is-eq (get status order) STATUS-OPEN) ERR-INVALID-ORDER-STATUS)
-
-        ;; Update order status
-        (map-set orders order-id
-            (merge order 
-                {
-                    status: STATUS-FILLED,
-                    filled-at: (some block-height)
-                }
+        
+        ;; Execute transfer based on order type
+        (if (is-eq (get order-type order) TYPE-SELL)
+            (begin
+                (unwrap! (contract-call? .energy-credit transfer tx-sender (get amount order)) ERR-TRANSFER-FAILED)
+                (ok (update-order-status order-id order))
+            )
+            (begin
+                (unwrap! (contract-call? .energy-credit transfer (get maker order) (get amount order)) ERR-TRANSFER-FAILED)
+                (ok (update-order-status order-id order))
             )
         )
-
-        ;; Update grid price data
-        (map-set grid-prices (get grid-location order)
-            {
-                last-price: (get price-per-unit order),
-                updated-at: block-height
-            }
-        )
-
-        (ok true)
-    )
-)
-
-;; Getter Functions
-(define-read-only (get-order (order-id uint))
-    (ok (map-get? orders order-id))
-)
-
-(define-read-only (get-grid-price (grid-location (string-ascii 50)))
-    (ok (map-get? grid-prices grid-location))
-)
-
-;; Contract Management
-(define-public (set-energy-credit-contract (new-contract principal))
-    (begin
-        (asserts! (is-contract-owner) ERR-NOT-AUTHORIZED)
-        (ok (var-set energy-credit-contract new-contract))
     )
 )
