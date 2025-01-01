@@ -96,3 +96,20 @@
         (ok true)
     )
 )
+
+;; Getter Functions
+(define-read-only (get-credit-balance (account principal))
+    (ok (default-to u0 (map-get? credit-balances account)))
+)
+
+(define-read-only (get-credit-metadata (credit-id uint))
+    (ok (map-get? credit-metadata credit-id))
+)
+
+(define-read-only (get-total-credits)
+    (ok (var-get total-credits))
+)
+
+(define-read-only (is-energy-provider (provider principal))
+    (ok (default-to false (map-get? energy-providers provider)))
+)
