@@ -13,3 +13,15 @@
 (define-data-var total-credits uint u0)
 (define-map credit-balances principal uint)
 (define-map energy-providers principal bool)
+
+;; Energy Credit Properties
+(define-map credit-metadata
+    uint
+    {
+        producer: principal,
+        energy-type: (string-ascii 20),
+        timestamp: uint,
+        amount: uint,
+        grid-location: (string-ascii 50)
+    }
+)
