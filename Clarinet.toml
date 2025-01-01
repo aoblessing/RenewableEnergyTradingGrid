@@ -9,6 +9,9 @@ boot_contracts = ["pox", "costs-v2", "bns"]
 [contracts.energy-credit]
 path = "contracts/energy-credit.clar"
 
+[contracts.engine-trading]
+path = "contracts/engine-trading.clar"
+
 [repl]
 costs_version = 2
 parser_version = 2
