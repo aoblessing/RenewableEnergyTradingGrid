@@ -67,7 +67,7 @@
         (asserts! (is-contract-owner) ERR-NOT-AUTHORIZED)
         (asserts! (validate-grid-location grid-location) ERR-INVALID-GRID)
         (asserts! (is-none (map-get? energy-providers provider)) ERR-PROVIDER-ALREADY-EXISTS)
-        
+
         (ok (map-set energy-providers 
             provider 
             {
@@ -98,16 +98,16 @@
         (asserts! (is-valid-provider provider) ERR-NOT-AUTHORIZED)
         (asserts! (> amount u0) ERR-ZERO-AMOUNT)
         (asserts! (is-valid-energy-type energy-type) ERR-INVALID-ENERGY-TYPE)
-        
+
         ;; Update total supply
         (var-set total-supply (+ current-total u1))
-        
+
         ;; Update provider balance
         (map-set balances 
             provider 
             (+ (default-to u0 (map-get? balances provider)) amount)
         )
-        
+
         ;; Store credit data
         (map-set credits current-total
             {
@@ -119,7 +119,7 @@
                 status: "active"
             }
         )
-        
+
         (ok current-total)
     )
 )
@@ -129,34 +129,18 @@
         (
             (sender tx-sender)
             (sender-balance (default-to u0 (map-get? balances sender)))
+            (recipient-balance (default-to u0 (map-get? balances recipient)))
         )
         ;; Input validation
         (asserts! (not (is-eq sender recipient)) ERR-TRANSFER-TO-SELF)
         (asserts! (> amount u0) ERR-ZERO-AMOUNT)
         (asserts! (>= sender-balance amount) ERR-INSUFFICIENT-BALANCE)
         (asserts! (is-some (map-get? energy-providers recipient)) ERR-INVALID-RECIPIENT)
-        
+
         ;; Update balances
-        (try! (decrease-balance sender amount))
-        (try! (increase-balance recipient amount))
-        
-        (ok true)
-    )
-)
+        (map-set balances sender (- sender-balance amount))
+        (map-set balances recipient (+ recipient-balance amount))
 
-;; Helper Functions for Balance Management
-(define-private (decrease-balance (account principal) (amount uint))
-    (let
-        ((current-balance (default-to u0 (map-get? balances account))))
-        (map-set balances account (- current-balance amount))
-        (ok true)
-    )
-)
-
-(define-private (increase-balance (account principal) (amount uint))
-    (let
-        ((current-balance (default-to u0 (map-get? balances account))))
-        (map-set balances account (+ current-balance amount))
         (ok true)
     )
 )
