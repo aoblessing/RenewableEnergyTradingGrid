@@ -30,3 +30,11 @@
 (define-private (is-contract-owner)
     (is-eq tx-sender CONTRACT-OWNER)
 )
+
+;; Energy Provider Management
+(define-public (register-energy-provider (provider principal))
+    (begin
+        (asserts! (is-contract-owner) ERR-NOT-AUTHORIZED)
+        (ok (map-set energy-providers provider true))
+    )
+)
